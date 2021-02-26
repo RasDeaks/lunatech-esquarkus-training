@@ -1,16 +1,14 @@
 package fr.lunatech.elasticsearch.service;
 
+import fr.lunatech.elasticsearch.client.ElasticClient;
 import fr.lunatech.elasticsearch.model.Fruit;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -22,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Fruit Service
@@ -31,26 +30,25 @@ import java.util.List;
 @Service
 public class FruitService {
 
-    private static final String FRUITT_INDEX_NAME= "fruits";
+    private static final String FRUIT_INDEX_NAME = "fruits";
 
     @Autowired
-    RestHighLevelClient restHighLevelClient;
+    ElasticClient elasticClient;
 
     public void create(Fruit fruit) throws IOException {
         log.debug("Indexing FRUIT [{}] in ES", fruit.getName());
-        IndexRequest request = new IndexRequest(FRUITT_INDEX_NAME);
+        IndexRequest request = new IndexRequest(FRUIT_INDEX_NAME);
         request.id(fruit.getId());
         request.source(JsonObject.mapFrom(fruit).toString(), XContentType.JSON);
-        restHighLevelClient.index(request, RequestOptions.DEFAULT);
+        elasticClient.index(request, RequestOptions.DEFAULT);
         log.debug("FRUIT [{}] indexed ", fruit.getName());
     }
 
-    public Fruit get(String id) throws IOException {
+    public Fruit get(String id) {
         log.debug("Get FRUIT by ID : [{}]", id);
-        GetRequest getRequest = new GetRequest("fruits", id);
-        GetResponse getResponse = restHighLevelClient.get(getRequest, RequestOptions.DEFAULT);
-        if (getResponse.isExists()) {
-            String sourceAsString = getResponse.getSourceAsString();
+        Optional<String> getResponse = elasticClient.get(FRUIT_INDEX_NAME, id);
+        if (getResponse.isPresent()) {
+            String sourceAsString = getResponse.get();
             log.debug("OK => Fruit:{}", sourceAsString);
             JsonObject json = new JsonObject(sourceAsString);
             return json.mapTo(Fruit.class);
@@ -59,25 +57,25 @@ public class FruitService {
         return null;
     }
 
-    public List<Fruit> searchByColor(String color) throws IOException {
+    public List<Fruit> searchByColor(String color) {
         return search("color", color);
     }
 
-    public List<Fruit> searchByName(String name) throws IOException {
+    public List<Fruit> searchByName(String name) {
         return search("name", name);
     }
 
-    private List<Fruit> search(String term, String match) throws IOException {
+    private List<Fruit> search(String term, String match) {
         log.debug("Search FRUIT by {}: [{}]", term, match);
         // prepare request
-        SearchRequest searchRequest = new SearchRequest(FRUITT_INDEX_NAME);
+        SearchRequest searchRequest = new SearchRequest(FRUIT_INDEX_NAME);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchQuery(term, match));
         searchRequest.source(searchSourceBuilder);
 
         // call ES
         log.trace("ES query = {}", Json.encode(searchRequest));
-        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        SearchResponse searchResponse = elasticClient.search(searchRequest);
         log.debug("ES response = {}", Json.encode(searchResponse));
         SearchHits hits = searchResponse.getHits();
         List<Fruit> results = new ArrayList<>(hits.getHits().length);
