@@ -1,6 +1,7 @@
 package fr.lunatech.elasticsearch.service;
 
 import fr.lunatech.elasticsearch.model.Fruit;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.get.GetRequest;
@@ -22,23 +23,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Fruit Service
+ * Create, get and search (by attribute) a {@link Fruit}
+ */
 @Slf4j
 @ApplicationScoped
 public class FruitService {
 
+    private static final String FRUITT_INDEX_NAME= "fruits";
 
     @Inject
     RestHighLevelClient restHighLevelClient;
 
     public void create(Fruit fruit) throws IOException {
-        log.debug("Create FRUIT [{}]", fruit.getName());
-        IndexRequest request = new IndexRequest("fruits");
+        log.debug("Indexing FRUIT [{}] in ES", fruit.getName());
+        IndexRequest request = new IndexRequest(FRUITT_INDEX_NAME);
         request.id(fruit.getId());
         request.source(JsonObject.mapFrom(fruit).toString(), XContentType.JSON);
         restHighLevelClient.index(request, RequestOptions.DEFAULT);
         log.debug("FRUIT [{}] indexed ", fruit.getName());
     }
-
 
     public Fruit get(String id) throws IOException {
         log.debug("Get FRUIT by ID : [{}]", id);
@@ -64,15 +69,21 @@ public class FruitService {
 
     private List<Fruit> search(String term, String match) throws IOException {
         log.debug("Search FRUIT by {}: [{}]", term, match);
-        SearchRequest searchRequest = new SearchRequest("fruits");
+        // prepare request
+        SearchRequest searchRequest = new SearchRequest(FRUITT_INDEX_NAME);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchQuery(term, match));
         searchRequest.source(searchSourceBuilder);
 
+        // call ES
+        log.debug("ES query = {}", Json.encode(searchRequest));
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        log.debug("ES response = {}", Json.encode(searchResponse));
         SearchHits hits = searchResponse.getHits();
         List<Fruit> results = new ArrayList<>(hits.getHits().length);
         log.debug("  {} hit found !", hits.getHits().length);
+
+        // map JSON response to model & return
         for (SearchHit hit : hits.getHits()) {
             String sourceAsString = hit.getSourceAsString();
             JsonObject json = new JsonObject(sourceAsString);
