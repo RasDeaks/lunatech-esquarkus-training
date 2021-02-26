@@ -16,9 +16,9 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +28,12 @@ import java.util.List;
  * Create, get and search (by attribute) a {@link Fruit}
  */
 @Slf4j
-@ApplicationScoped
+@Service
 public class FruitService {
 
     private static final String FRUITT_INDEX_NAME= "fruits";
 
-    @Inject
+    @Autowired
     RestHighLevelClient restHighLevelClient;
 
     public void create(Fruit fruit) throws IOException {
@@ -76,12 +76,12 @@ public class FruitService {
         searchRequest.source(searchSourceBuilder);
 
         // call ES
-        log.debug("ES query = {}", Json.encode(searchRequest));
+        log.trace("ES query = {}", Json.encode(searchRequest));
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
         log.debug("ES response = {}", Json.encode(searchResponse));
         SearchHits hits = searchResponse.getHits();
         List<Fruit> results = new ArrayList<>(hits.getHits().length);
-        log.debug("  {} hit found !", hits.getHits().length);
+        log.trace("  {} hit found !", hits.getHits().length);
 
         // map JSON response to model & return
         for (SearchHit hit : hits.getHits()) {
