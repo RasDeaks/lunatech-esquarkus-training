@@ -52,6 +52,7 @@
                         $scope.fruits = response.data;
                     }, function errorCallback(response) {
                         console.log(response.statusText);
+                        _error(response)
                     });
             };
 
