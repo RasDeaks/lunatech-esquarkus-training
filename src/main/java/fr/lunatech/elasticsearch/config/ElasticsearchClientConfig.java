@@ -3,13 +3,16 @@ package fr.lunatech.elasticsearch.config;
 import fr.lunatech.elasticsearch.client.ElasticClient;
 import fr.lunatech.elasticsearch.client.ElasticClientWrap;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.Produces;
+
+@Dependent
 public class ElasticsearchClientConfig {
 
-    @Bean
+    @Produces
+    @ApplicationScoped
     ElasticClient elasticClientWrap(final RestHighLevelClient client) {
         return new ElasticClientWrap(
                 client::index,

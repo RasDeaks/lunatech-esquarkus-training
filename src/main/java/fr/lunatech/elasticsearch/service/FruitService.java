@@ -14,9 +14,9 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,13 +27,17 @@ import java.util.Optional;
  * Create, get and search (by attribute) a {@link Fruit}
  */
 @Slf4j
-@Service
+@ApplicationScoped
 public class FruitService {
 
     private static final String FRUIT_INDEX_NAME = "fruits";
 
-    @Autowired
     ElasticClient elasticClient;
+
+    @Inject
+    public FruitService(ElasticClient elasticClientWrap) {
+        this.elasticClient = elasticClientWrap;
+    }
 
     public void create(Fruit fruit) throws IOException {
         log.debug("Indexing FRUIT [{}] in ES", fruit.getName());

@@ -2,9 +2,8 @@ package fr.lunatech.elasticsearch.controller;
 
 import fr.lunatech.elasticsearch.model.Fruit;
 import fr.lunatech.elasticsearch.service.FruitService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 
+import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -13,11 +12,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Consumes("application/json")
-@Controller
 @Path("/fruits")
 public class FruitResource {
 
-    @Autowired
+    @Inject
     FruitService fruitService;
 
     @POST
