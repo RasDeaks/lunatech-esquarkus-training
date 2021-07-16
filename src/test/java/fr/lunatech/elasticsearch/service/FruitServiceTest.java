@@ -24,7 +24,7 @@ class FruitServiceTest {
     @Inject
     FruitService fruitService;
 
-    //test using a mock service class (FruitServiceMock.class), never fail
+    // unit test using a mock service class (FruitServiceMock.class), never fail
     @Test
     void testSearchByName_ClassMock() throws IOException {
         List<Fruit> pasteque = fruitService.searchByName("pasteque");
@@ -32,7 +32,7 @@ class FruitServiceTest {
         Assertions.assertEquals(1,pasteque.size());
     }
 
-    // test using a local mock
+    // unit test using a local mock
     @Test
     void testGetAll_LocalMock() throws IOException{
         FruitService service = Mockito.mock(FruitService.class);
@@ -44,6 +44,16 @@ class FruitServiceTest {
         List<Fruit> all = service.getAll();
         all.forEach(System.out::println);
         Assertions.assertEquals(1, all.size());
+    }
+
+    // integration test using restEasy : real call, fail if ES involved in call (search or Post result in connection refused)
+    @Test
+    void testGetHomePage() {
+        given()
+                .when().get("/fruit.html")
+                .then()
+                .statusCode(200)
+                .body(containsString("REST Service - Fruit"));
     }
 
     // hybrid test : restEasy + QuarkusMock
@@ -69,15 +79,7 @@ class FruitServiceTest {
                 .statusCode(201);
     }
 
-    // test using restEasy : real call, fail if ES involved in call (search or Post result in connection refused)
-    @Test
-    void testGetHomePage() {
-        given()
-                .when().get("/fruit.html")
-                .then()
-                .statusCode(200)
-                .body(containsString("REST Service - Fruit"));
-    }
+    //TODO try to mock RestHighLevelClient instead of service to test service
 
     // in case you need to mock an ES response
     public String jsonResponse(){
