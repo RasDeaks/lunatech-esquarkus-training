@@ -1,15 +1,18 @@
 package fr.lunatech.elasticsearch.service;
 
-import fr.lunatech.elasticsearch.client.ElasticClient;
 import fr.lunatech.elasticsearch.model.Fruit;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.MatchAllQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -19,8 +22,9 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Fruit Service
@@ -30,29 +34,26 @@ import java.util.Optional;
 @ApplicationScoped
 public class FruitService {
 
-    private static final String FRUIT_INDEX_NAME = "fruits";
-
-    ElasticClient elasticClient;
+    private static final String FRUITT_INDEX_NAME= "fruits";
 
     @Inject
-    public FruitService(ElasticClient elasticClientWrap) {
-        this.elasticClient = elasticClientWrap;
-    }
+    RestHighLevelClient restHighLevelClient;
 
     public void create(Fruit fruit) throws IOException {
         log.debug("Indexing FRUIT [{}] in ES", fruit.getName());
-        IndexRequest request = new IndexRequest(FRUIT_INDEX_NAME);
+        IndexRequest request = new IndexRequest(FRUITT_INDEX_NAME);
         request.id(fruit.getId());
         request.source(JsonObject.mapFrom(fruit).toString(), XContentType.JSON);
-        elasticClient.index(request, RequestOptions.DEFAULT);
+        restHighLevelClient.index(request, RequestOptions.DEFAULT);
         log.debug("FRUIT [{}] indexed ", fruit.getName());
     }
 
-    public Fruit get(String id) {
+    public Fruit get(String id) throws IOException {
         log.debug("Get FRUIT by ID : [{}]", id);
-        Optional<String> getResponse = elasticClient.get(FRUIT_INDEX_NAME, id);
-        if (getResponse.isPresent()) {
-            String sourceAsString = getResponse.get();
+        GetRequest getRequest = new GetRequest(FRUITT_INDEX_NAME, id);
+        GetResponse getResponse = restHighLevelClient.get(getRequest, RequestOptions.DEFAULT);
+        if (getResponse.isExists()) {
+            String sourceAsString = getResponse.getSourceAsString();
             log.debug("OK => Fruit:{}", sourceAsString);
             JsonObject json = new JsonObject(sourceAsString);
             return json.mapTo(Fruit.class);
@@ -61,29 +62,41 @@ public class FruitService {
         return null;
     }
 
-    public List<Fruit> searchByColor(String color) {
+    public List<Fruit> getAll() throws IOException {
+        log.debug("Get All FRUIT");
+        SearchRequest searchRequest = new SearchRequest(FRUITT_INDEX_NAME);
+
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+
+        return Arrays.stream(searchResponse.getHits().getHits())
+                .map(SearchHit::getSourceAsString)
+                .map(s -> new JsonObject(s).mapTo(Fruit.class))
+                .collect(Collectors.toList());
+    }
+
+    public List<Fruit> searchByColor(String color) throws IOException {
         return search("color", color);
     }
 
-    public List<Fruit> searchByName(String name) {
+    public List<Fruit> searchByName(String name) throws IOException {
         return search("name", name);
     }
 
-    private List<Fruit> search(String term, String match) {
+    private List<Fruit> search(String term, String match) throws IOException {
         log.debug("Search FRUIT by {}: [{}]", term, match);
         // prepare request
-        SearchRequest searchRequest = new SearchRequest(FRUIT_INDEX_NAME);
+        SearchRequest searchRequest = new SearchRequest(FRUITT_INDEX_NAME);
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(QueryBuilders.matchQuery(term, match));
         searchRequest.source(searchSourceBuilder);
 
         // call ES
-        log.trace("ES query = {}", Json.encode(searchRequest));
-        SearchResponse searchResponse = elasticClient.search(searchRequest);
+        log.debug("ES query = {}", Json.encode(searchRequest));
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
         log.debug("ES response = {}", Json.encode(searchResponse));
         SearchHits hits = searchResponse.getHits();
         List<Fruit> results = new ArrayList<>(hits.getHits().length);
-        log.trace("  {} hit found !", hits.getHits().length);
+        log.debug("  {} hit found !", hits.getHits().length);
 
         // map JSON response to model & return
         for (SearchHit hit : hits.getHits()) {

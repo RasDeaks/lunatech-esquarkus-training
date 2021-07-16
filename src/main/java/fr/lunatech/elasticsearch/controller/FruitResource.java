@@ -28,6 +28,11 @@ public class FruitResource {
     }
 
     @GET
+    public List<Fruit> getAll() throws IOException {
+        return fruitService.getAll();
+    }
+
+    @GET
     @Path("/{id}")
     public Fruit get(@PathParam("id") String id) throws IOException {
         return fruitService.get(id);

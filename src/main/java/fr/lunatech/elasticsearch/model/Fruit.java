@@ -5,8 +5,8 @@ import lombok.Data;
 @Data
 public class Fruit {
 
-    private  String id;
-    private  String name;
-    private  String color;
-    private  String description;
+    String id;
+    String name;
+    String color;
+    String description;
 }
